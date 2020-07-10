@@ -9,6 +9,7 @@ import sys
 import glob
 import re
 import numpy
+import math
 import matplotlib.pyplot as plt
 from art import *
 from sirf import SIRF
@@ -41,10 +42,10 @@ Pet.set_verbosity(1)
 
 #%% data path and set filenames
 # data path to list-mode and normalisation files
-data_path_LM = '/home/rich/Documents/ReCo/UKL_data/LM/20191009/'
+data_path_LM = '/home/rich/Documents/ReCo/UKL_data/LM/20191016/'
 
 # avoid cluttering of files, delete working-folder and start from scratch
-working_folder = '/home/rich/Documents/ReCo/working_NAC'
+working_folder = '/home/rich/Documents/ReCo/working_NAC3'
 # if os.path.exists(working_folder):
 #     shutil.rmtree(working_folder)
 if not os.path.exists(working_folder):
@@ -54,9 +55,9 @@ if not os.path.exists(working_folder):
 os.chdir(working_folder)
 
 # input files
-list_file = data_path_LM + '1.3.12.2.1107.5.2.38.51008.30000019100905461135500000006.l.hdr'
+list_file = data_path_LM + '1.3.12.2.1107.5.2.38.51008.30000019101607592880100000028.l.hdr'
 print('LM data: {}'.format(list_file))
-norm_file = data_path_LM + '1.3.12.2.1107.5.2.38.51008.30000019100905461135500000008.n.hdr'
+norm_file = data_path_LM + '1.3.12.2.1107.5.2.38.51008.30000019101607592880100000027.n.hdr'
 print('Norm data: {}'.format(norm_file))
 
 
@@ -66,7 +67,7 @@ sino_file = 'sino'
 
 #%% define time frames (read frames.txt) and time intervals
 # path to folder with frames.txt
-frames_path = '/home/rich/tmp/processed/home/rich/Documents/ReCo/UKL_data/Processed/MedPhys_MoCo_Test_20191009_19/40008__new2_4moco_PRR_AC_Images/'
+frames_path = '/home/rich/tmp/processed/home/rich/Documents/ReCo/UKL_data/Processed/MedPhys_MoCo_Test_20191016_37/40004__30x20sec_4moco_PRR_AC_Images/'
 
 with open(frames_path + 'frames.txt', 'r') as f:
     time_frames = [int(line.rstrip()) for line in f]
@@ -203,17 +204,30 @@ tprint('Finish Reg for NAC')
 
 #%% get TM from Reg and calculate mean translation amplitude for every EPI volume
 translation_values = []
+rotation_values = []
 for i in range(len(os.listdir(flo_path))):
     tm_fwd = spm_reg.get_transformation_matrix_forward(i)
     tm_fwd.write(path_moco_NAC + '/tm' + str(i))
-    tm_fwD_arr = tm_fwd.as_array()
-    translation = numpy.sqrt((tm_fwD_arr[0][3])**2 + (tm_fwD_arr[1][3])**2 + (tm_fwD_arr[2][3])**2)
+    # tm_fwD_arr = tm_fwd.as_array()
+    # translation = numpy.sqrt((tm_fwD_arr[0][3])**2 + (tm_fwD_arr[1][3])**2 + (tm_fwD_arr[2][3])**2)
+    # translation_values.append(translation)
+
+for file in sorted_alphanumeric(os.listdir(path_moco_NAC)):
+    print(path_moco_NAC + '/' + file)
+    tm_fwD_arr = numpy.loadtxt(path_moco_NAC + '/' + file)
+    translation = numpy.sqrt((tm_fwD_arr[0][3]) ** 2 + (tm_fwD_arr[1][3]) ** 2 + (tm_fwD_arr[2][3]) ** 2)
     translation_values.append(translation)
+    rotation = numpy.sqrt((math.atan2(tm_fwD_arr[2][1], tm_fwD_arr[2][2])) ** 2 + (math.atan2(-tm_fwD_arr[2][0], numpy.sqrt(tm_fwD_arr[2][1] ** 2 + tm_fwD_arr[2][2] ** 2))) ** 2 + (math.atan2(tm_fwD_arr[1][0], tm_fwD_arr[0][0])) ** 2)
+    rotation_values.append(rotation)
 
 
 #%% save list of translation amplitude values as txt-file
 with open(path_moco_NAC + '/translation.txt', 'w') as f:
     for item in translation_values:
+        f.write("%s\n" % item)
+
+with open(path_moco_NAC + '/rotation.txt', 'w') as f:
+    for item in rotation_values:
         f.write("%s\n" % item)
 
 tprint('DONE!')
