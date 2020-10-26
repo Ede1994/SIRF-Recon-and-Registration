@@ -120,12 +120,14 @@ for num, image in zip(num_tm, sorted_alphanumeric(list_NACs)):
     flo = Eng_flo.ImageData(path_NAC + image)
 
     # read tm-matrix as numpy array and read load float image
-    matrix = numpy.loadtxt(path_EPI + 'tm_epi_' + str(num) + '.txt')
-    matrix2 = numpy.loadtxt(path_EPI + 'tm_epi_inv_' + str(num) + '.txt')
+    #matrix = numpy.loadtxt(path_EPI + 'tm_epi_' + str(num) + '.txt')
+    matrix = numpy.loadtxt(path_EPI + 'tm_epi_inv_' + str(num) + '.txt')
     
     # tm space transformation: EPI -> NAC
-    # transform tm into PET space
-    matrix2 = tm_inv * matrix2 * tm_fwd
+    # transform tm into PET space: T_nac = R⁻1 * T_epi * R
+    matrix1 = tm_inv.dot(matrix)
+    matrix2 = matrix1.dot(tm_fwd)
+    print(matrix2)
 
     # create affine transformation from numpy array
     tm = Reg.AffineTransformation(matrix2)
@@ -163,4 +165,3 @@ final_image.fill(initial_array)
 final_image.write('final_image_RTA.nii')
 
 tprint('DONE!')
-
