@@ -35,19 +35,14 @@ working_folder = py_path + '/working'
 # change the current working directory to the given path
 os.chdir(working_folder)
 
-# path
+#%% Create folders for results
+
 path_EPI = working_folder + '/EPI/'
 path_mu = working_folder + '/mu/'
-path_tm = working_folder + '/tm/'
-if not os.path.exists(path_EPI):
-    os.makedirs(path_EPI, mode=0o770)
-    print('Create Folder: {}'.format(path_EPI))
+
 if not os.path.exists(path_mu):
     os.makedirs(path_mu, mode=0o770)
     print('Create Folder: {}'.format(path_mu))
-if not os.path.exists(path_tm):
-    os.makedirs(path_tm, mode=0o770)
-    print('Create Folder: {}'.format(path_tm))
 
 
 #%% Define time frames (read frames.txt) and time intervals
@@ -98,25 +93,26 @@ tm_inv = numpy.loadtxt(py_path + '/UKL_data/tm_epi/reg_NAC_EPI_inv.txt')
 
 # settings for attn resampler
 resamplers_attn = Reg.NiftyResample()
-resamplers_attn.set_reference_image(attn_image)
+resamplers_attn.set_reference_image(template_image)
 resamplers_attn.set_floating_image(attn_image)
 resamplers_attn.set_padding_value(0)
 resamplers_attn.set_interpolation_type_to_linear()
 
 i = 0
 for num in num_tm:
-    print('Begin resampling mu-Maps: {}'.format(path_EPI + 'tm_epi_' + str(num) + '.txt'))
+    print('Begin resampling mu-Maps: {}'.format(path_EPI + 'tm_epi_inv_' + str(num) + '.txt'))
     
     # read matrix and calculate invers
-    matrix = numpy.loadtxt(path_EPI + 'tm_epi_' + str(num) + '.txt')
-    matrix2 = numpy.loadtxt(path_EPI + 'tm_epi_inv_' + str(num) + '.txt')
+    #matrix = numpy.loadtxt(path_EPI + 'tm_epi_' + str(num) + '.txt')
+    matrix = numpy.loadtxt(path_EPI + 'tm_epi_inv_' + str(num) + '.txt')
     
     # tm space transformation: EPI -> NAC
-    # transform tm into PET space
-    matrix = tm_inv * matrix * tm_fwd
+    # transform tm into PET space: T_nac = R⁻1 * T_epi * R
+    matrix1 = tm_fwd.dot(matrix)
+    matrix2 = matrix1.dot(tm_inv)
     
     # create affine transformation from numpy array
-    tm = Reg.AffineTransformation(matrix)
+    tm = Reg.AffineTransformation(matrix2)
 
     resamplers_attn.clear_transformations()
     resamplers_attn.add_transformation(tm)
