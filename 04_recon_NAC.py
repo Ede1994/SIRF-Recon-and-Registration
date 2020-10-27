@@ -44,12 +44,6 @@ path_NAC = working_folder + '/recon/NAC/'
 path_sino = working_folder + '/sino/'
 path_rando = working_folder + '/rando/'
 
-if not os.path.exists(path_sino):
-    os.makedirs(path_sino, mode=0o770)
-    print('Create Folder: {}'.format(path_sino))
-if not os.path.exists(path_rando):
-    os.makedirs(path_rando, mode=0o770)
-    print('Create Folder: {}'.format(path_rando))
 if not os.path.exists(path_NAC):
     os.makedirs(path_NAC, mode=0o770)
     print('Create Folder: {}'.format(path_NAC))
@@ -68,9 +62,6 @@ num_subiterations = 4
 recon.set_num_subsets(num_subsets)
 recon.set_num_subiterations(num_subiterations)
 
-# definitions for attenuation
-attn_acq_model = Pet.AcquisitionModelUsingRayTracingMatrix()
-
 # definitions for detector sensitivity modelling
 asm_norm = Pet.AcquisitionSensitivityModel(norm_file)
 acq_model.set_acquisition_sensitivity(asm_norm)
@@ -85,7 +76,6 @@ msg_red = Pet.MessageRedirector('info.txt', 'warn.txt')
 list_sino = [f for f in os.listdir(working_folder + '/sino/') if f.endswith(".hs")]
 list_rando = [f for f in os.listdir(working_folder + '/rando/') if f.endswith(".hs")]
 
-print(path_sino)
 
 #%% NAC reconstruction
 
@@ -93,8 +83,6 @@ tprint('Start NAC Recon')
 
 for i, sino, random in zip(range(len(path_sino)), sorted_alphanumeric(list_sino), sorted_alphanumeric(list_rando)):
 
-    print(path_sino)
-    print(path_sino + sino)
     sino_pet = Pet.AcquisitionData(path_sino + sino)
     print(sino)
     randoms_pet = Pet.AcquisitionData(path_rando + random)
