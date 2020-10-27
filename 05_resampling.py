@@ -49,15 +49,12 @@ os.chdir(working_folder)
 
 
 #%% create folders for results
+
 path_NAC = working_folder + '/recon/NAC/'
+path_AC = working_folder + '/recon/AC/'
 path_EPI = working_folder + '/EPI/'
 path_moco = working_folder + '/moco/'
-if not os.path.exists(path_NAC):
-    os.makedirs(path_NAC, mode=0o770)
-    print('Create Folder: {}'.format(path_NAC))
-if not os.path.exists(path_EPI):
-    os.makedirs(path_EPI, mode=0o770)
-    print('Create Folder: {}'.format(path_EPI))
+
 if not os.path.exists(path_moco):
     os.makedirs(path_moco, mode=0o770)
     print('Create Folder: {}'.format(path_moco))
@@ -94,14 +91,17 @@ print('Correct TM: {}'.format(num_tm))
 # list of all NACs
 list_NACs = [f for f in os.listdir(path_NAC) if f.endswith(".nii")]
 
+# list of all ACs
+list_ACs = [f for f in os.listdir(path_AC) if f.endswith(".nii")]
+
 # define space matrices
 tm_fwd = numpy.loadtxt(py_path + '/UKL_data/tm_epi/reg_NAC_EPI.txt')
 tm_inv = numpy.loadtxt(py_path + '/UKL_data/tm_epi/reg_NAC_EPI_inv.txt')
 
 # define reference image and float-path
-ref_file = path_NAC + 'NAC_0.nii'
+ref_file = path_AC + 'AC_0.nii'
 ref = Eng_ref.ImageData(ref_file)
-flo_path = path_NAC
+flo_path = path_AC
 
 # settings for image resampler
 resampler_im = Reg.NiftyResample()
@@ -114,20 +114,19 @@ tprint('Start Resampling')
 i = 0
 
 # for loop, simultaneous matrices and images
-for num, image in zip(num_tm, sorted_alphanumeric(list_NACs)):
+for num, image in zip(num_tm, sorted_alphanumeric(list_ACs)):
     print('TM: {}, Float-Image: {}'.format('tm_epi_' + str(num) + '.txt', image))
 
-    flo = Eng_flo.ImageData(path_NAC + image)
+    flo = Eng_flo.ImageData(path_AC + image)
 
     # read tm-matrix as numpy array and read load float image
-    #matrix = numpy.loadtxt(path_EPI + 'tm_epi_' + str(num) + '.txt')
-    matrix = numpy.loadtxt(path_EPI + 'tm_epi_inv_' + str(num) + '.txt')
+    matrix = numpy.loadtxt(path_EPI + 'tm_epi_' + str(num) + '.txt')
+    #matrix = numpy.loadtxt(path_EPI + 'tm_epi_inv_' + str(num) + '.txt')
     
     # tm space transformation: EPI -> NAC
     # transform tm into PET space: T_nac = R⁻1 * T_epi * R
-    matrix1 = tm_inv.dot(matrix)
-    matrix2 = matrix1.dot(tm_fwd)
-    print(matrix2)
+    matrix1 = tm_fwd.dot(matrix)
+    matrix2 = matrix1.dot(tm_inv)
 
     # create affine transformation from numpy array
     tm = Reg.AffineTransformation(matrix2)
