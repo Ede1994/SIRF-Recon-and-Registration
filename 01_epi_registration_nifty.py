@@ -55,7 +55,11 @@ if not os.path.exists(working_folder):
 # change the current working directory to the given path
 os.chdir(working_folder)
 
+
+#%% Create folders for results
+
 path_EPI = working_folder + '/EPI/'
+
 if not os.path.exists(path_EPI):
     os.makedirs(path_EPI, mode=0o770)
     print('Create Folder: {}'.format(path_EPI))
