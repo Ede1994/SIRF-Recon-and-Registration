@@ -61,10 +61,12 @@ acq_model.set_num_tangential_LORs(5)
 # set recon, OSEM
 recon = Pet.OSMAPOSLReconstructor()
 num_subsets = 21
-num_subiterations = 63
+num_subiterations = 168
 recon.set_num_subsets(num_subsets)
 recon.set_num_subiterations(num_subiterations)
 
+# dimensions
+nxny = (256, 256)
 
 #%% redirect STIR messages to some files
 # you can check these if things go wrong
@@ -201,7 +203,7 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
         obj_fun = Pet.make_Poisson_loglikelihood(acq_data)
         acq_model.set_background_term(randoms)
         recon.set_objective_function(obj_fun)
-        initial_image = acq_data.create_uniform_image(1.0)
+        initial_image = acq_data.create_uniform_image(1.0, nxny)
         image = initial_image
         recon.set_up(image)
 
@@ -239,7 +241,7 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
 
     tprint('Finish Registration')
     
-    ### resample mu-Map into each NAC space ###
+    ### resample mu-Map into NAC space and move it to each position ###
     ref_file = path_NAC + 'NAC_0.nii'
     ref = Eng_ref.ImageData(ref_file)
     flo = Eng_flo.ImageData(attn_image)
@@ -300,7 +302,7 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
         acq_model.set_background_term(randoms_pet)
         obj_fun.set_acquisition_model(acq_model)
         recon.set_objective_function(obj_fun)
-        initial_image = sino_pet.create_uniform_image(1.0)
+        initial_image = sino_pet.create_uniform_image(1.0, nxny)
         image = initial_image
         recon.set_up(image)
 
@@ -326,7 +328,6 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
     # define reference image and float-path
     ref_file = path_AC + 'AC_0.nii'
     ref = Eng_ref.ImageData(ref_file)
-    flo_path = path_AC
 
     # settings for image resampler
     resampler_im = Reg.NiftyResample()
