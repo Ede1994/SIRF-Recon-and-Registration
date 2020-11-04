@@ -67,6 +67,8 @@ recon.set_num_subiterations(num_subiterations)
 asm_norm = Pet.AcquisitionSensitivityModel(norm_file)
 acq_model.set_acquisition_sensitivity(asm_norm)
 
+# dimensions
+nxny = (256, 256)
 
 #%% redirect STIR messages to some files
 # you can check these if things go wrong
@@ -108,7 +110,7 @@ for i, sino, random, mu in zip(range(len(path_sino)), sorted_alphanumeric(list_s
     acq_model.set_background_term(randoms_pet)
     obj_fun.set_acquisition_model(acq_model)
     recon.set_objective_function(obj_fun)
-    initial_image = sino_pet.create_uniform_image(1.0)
+    initial_image = sino_pet.create_uniform_image(1.0, nxny)
     image = initial_image
     recon.set_up(image)
 
