@@ -57,7 +57,7 @@ if not os.path.exists(path_moco):
     print('Create Folder: {}'.format(path_moco))
 
 
-#%% convert a array to a SIRF transformation matrix and then resample the float image
+#%% resample the float images back to reference
 
 # list of all NACs
 list_NACs = [f for f in os.listdir(path_NAC) if f.endswith(".nii")]
@@ -78,8 +78,6 @@ resampler_im.set_interpolation_type_to_linear()
 
 tprint('Start Resampling')
 
-i = 0
-
 # for loop, simultaneous matrices and images
 for num, image in zip(range(len(list_ACs)), sorted_alphanumeric(list_ACs)):
     print('TM: {}, Float-Image: {}'.format('tm_nac_' + str(num) + '.txt', image))
@@ -98,11 +96,10 @@ for num, image in zip(range(len(list_ACs)), sorted_alphanumeric(list_ACs)):
     resampler_im.set_floating_image(flo)
     resampler_im.add_transformation(tm)
     new_im = resampler_im.forward(flo)
-    new_im.write(working_folder + '/moco/moco_'+str(i))
+    new_im.write(working_folder + '/moco/moco_'+str(num))
 
     print('Resampling successful: {}'.format(image))
 
-    i += 1
 
 tprint('Finish Resampling')
 

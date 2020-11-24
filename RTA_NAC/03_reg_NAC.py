@@ -6,7 +6,6 @@ Author: Eric Einspaenner, Institute of Nuclear Medicine
 For internal research only.
 """
 import os
-import shutil
 import re
 from art import tprint
 import sirf.Reg as Reg
@@ -55,6 +54,7 @@ os.chdir(working_folder)
 #%% Create folders for results
 
 path_NAC = working_folder + '/recon/NAC/'
+path_smooth = working_folder + '/recon/SMOOTH/'
 path_tm = working_folder + '/tm/'
 
 if not os.path.exists(path_tm):
@@ -62,20 +62,20 @@ if not os.path.exists(path_tm):
     print('Create Folder: {}'.format(path_tm))
 
 
-#%% Registration EPI, delivers transformation matrices 
+#%% Registration NAC, delivers transformation matrices 
 # define reference image (first image) and float-path
 
 tprint('Start Registration of NACs')
 
 # refernce file
-ref_file = path_NAC + 'NAC_0.nii'
+ref_file = path_smooth + 'smooth_0.nii'
 ref = Eng_ref.ImageData(ref_file)
 
 # float files
-flo_path = path_NAC
-list_NACs = [f for f in os.listdir(path_NAC) if f.endswith(".nii")]
+flo_path = path_smooth
+list_smooth = [f for f in os.listdir(flo_path) if f.endswith(".nii")]
 
 # Niftyreg with EPI images
-reg_nac(ref, flo_path, list_NACs)
+reg_nac(ref, flo_path, list_smooth)
 
 tprint('Finish Registration')

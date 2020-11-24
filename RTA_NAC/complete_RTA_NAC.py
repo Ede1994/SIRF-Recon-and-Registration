@@ -34,7 +34,7 @@ def sorted_alphanumeric(data):
     alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
     return sorted(data, key=alphanum_key, reverse=False)
 
-# registration of EPI images
+# registration of NAC images
 def reg_nac(ref, flo_path, list_NACs):
     i = 0
     nac_reg = Reg.NiftyAladinSym()
@@ -68,20 +68,30 @@ recon.set_num_subiterations(num_subiterations)
 # dimensions
 nxny = (256, 256)
 
+
 #%% redirect STIR messages to some files
 # you can check these if things go wrong
 
 msg_red = Pet.MessageRedirector('info.txt', 'warn.txt')
 
 
-#%% main
+#%% Data
+
+# attn file
+attn_file = '/home/eric/Dokumente/PythonProjects/SIRF/UKL_data/mu_Map/stir_mu_map.hv'
+
+# data path
 data_path = '/home/eric/Dokumente/PythonProjects/SIRF/UKL_data/LM/20190723/20190723/'
 
+# list of all LM and norm files
 list_LM_files = [f for f in os.listdir(data_path) if f.endswith(".l.hdr")]
 list_norm_files = [f for f in os.listdir(data_path) if f.endswith(".n.hdr")]
 
 print(sorted_alphanumeric(list_LM_files))
 print(sorted_alphanumeric(list_norm_files))
+
+
+#%% main
 
 j = 0
 for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alphanumeric(list_norm_files)):
@@ -105,8 +115,6 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
     norm_file = data_path + norm_file
     print('LM data: {}'.format(list_file))
     print('Norm data: {}'.format(norm_file))
-    
-    attn_file = '/home/eric/Dokumente/PythonProjects/SIRF/UKL_data/mu_Map/stir_mu_map.hv'
     print('mu-Map: {}'.format(attn_file))
 
     attn_image = Pet.ImageData(attn_file)
@@ -115,10 +123,12 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
     sino_file = 'sino'
 
 
-    ### Create folders for results ###
+    #%% Create folders for results
+
     path_sino = working_folder + '/sino/'
     path_rando = working_folder + '/rando/'
     path_NAC = working_folder + '/recon/NAC/'
+    path_smooth = working_folder + '/recon/SMOOTH/'
     path_tm = working_folder + '/tm/'
     path_mu = working_folder + '/mu/'
     path_AC = working_folder + '/recon/AC/'
@@ -133,6 +143,9 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
     if not os.path.exists(path_NAC):
         os.makedirs(path_NAC, mode=0o770)
         print('Create Folder: {}'.format(path_NAC))
+    if not os.path.exists(path_smooth):
+        os.makedirs(path_smooth, mode=0o770)
+        print('Create Folder: {}'.format(path_smooth))
     if not os.path.exists(path_tm):
         os.makedirs(path_tm, mode=0o770)
         print('Create Folder: {}'.format(path_tm))
@@ -145,8 +158,10 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
     if not os.path.exists(path_moco):
         os.makedirs(path_moco, mode=0o770)
         print('Create Folder: {}'.format(path_moco))
-    
-    ### create template and set lm2sino converter ###
+
+
+    #%% create template and set lm2sino converter
+
     # template for acq_data
     template_acq_data = Pet.AcquisitionData('Siemens_mMR', span=11, max_ring_diff=16, view_mash_factor=1)
     template_acq_data.write('template.hs')
@@ -160,7 +175,7 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
     lm2sino.set_template('template.hs')
 
 
-    ### Define time frames (read frames.txt) and time intervals ###    
+    #%% Define time frames (read frames.txt) and time intervals ###    
     # path to folder with frames.txt
     frames_path = '/home/eric/Dokumente/PythonProjects/SIRF/UKL_data/frames/'
 
@@ -177,7 +192,8 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
     print('Time intervals: {}'.format(time_intervals))
 
 
-    ### NAC reconstruction ###   
+    #%% NAC reconstruction
+
     # definitions for detector sensitivity modelling
     asm_norm = Pet.AcquisitionSensitivityModel(norm_file)
     acq_model.set_acquisition_sensitivity(asm_norm)
@@ -211,37 +227,50 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
         recon.process()
 
         # save recon images
-        recon_image = recon.get_output()
-        recon_image.write(path_NAC + 'NAC_' + str(i))
-
-        # save Image as .nii
         recon_image = Reg.NiftiImageData(recon.get_output())
         recon_image.write(path_NAC + 'NAC_' + str(i))
+    
+        image = recon.get_output()
+    
+        # apply gaussian filter with 3mm fwhm
+        gaussian_filter = Pet.SeparableGaussianImageFilter()
+        gaussian_filter.set_fwhms((3, 3, 3))
+        #gaussian_filter.set_max_kernel_sizes((10, 10, 2))
+        gaussian_filter.set_normalise()
+        gaussian_filter.set_up(image)
+        gaussian_filter.apply(image)    
+
+        # save Image as .nii
+        smoothed_image = Reg.NiftiImageData(image)
+        smoothed_image.write(path_smooth + 'smooth_' + str(i))
 
         print('Reconstruction successful: Frame {}'.format(i))
 
     tprint('Finish NAC Recon')
-    
-    ### NAC registration ###
+
+
+    #%% NAC registration
     # Registration NAC, delivers transformation matrices 
     # define reference image (first image) and float-path
 
     tprint('Start Registration of NACs')
 
     # refernce file
-    ref_file = path_NAC + 'NAC_0.nii'
+    ref_file = path_smooth + 'smooth_0.nii'
     ref = Eng_ref.ImageData(ref_file)
 
     # float files
-    flo_path = path_NAC
-    list_NACs = [f for f in os.listdir(path_NAC) if f.endswith(".nii")]
+    flo_path = path_smooth
+    list_smooth = [f for f in os.listdir(flo_path) if f.endswith(".nii")]
 
-    # Niftyreg with NAC images
-    reg_nac(ref, flo_path, list_NACs)
+    # Niftyreg with EPI images
+    reg_nac(ref, flo_path, list_smooth)
 
     tprint('Finish Registration')
-    
-    ### resample mu-Map into NAC space and move it to each position ###
+
+
+    #%% resample mu-Map into NAC space and move it to each position
+
     ref_file = path_NAC + 'NAC_0.nii'
     ref = Eng_ref.ImageData(ref_file)
     flo = Eng_flo.ImageData(attn_image)
@@ -250,13 +279,15 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
 
     for i in range(30):
         print('Begin resampling mu-Maps: {}, with {}'.format(i, path_tm + 'tm_nac_inv_' + str(i) + '.txt'))
-        tm = numpy.loadtxt(path_tm + 'tm_nac_inv_' + str(i) + '.txt')
-        tm_fwd = Reg.AffineTransformation(tm)
+        
+        matrix = numpy.loadtxt(path_tm + 'tm_nac_inv_' + str(i) + '.txt')
+        
+        tm_inv = Reg.AffineTransformation(matrix)
 
         resampler = Reg.NiftyResample()
         resampler.set_reference_image(ref)
         resampler.set_floating_image(flo)
-        resampler.add_transformation(tm_fwd)
+        resampler.add_transformation(tm_inv)
         resampler.set_padding_value(0)
         resampler.set_interpolation_type_to_linear()
         mu_map_in_ith_NAC_space = resampler.forward(flo)
@@ -267,8 +298,10 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
         print('Finish resampling mu-Maps: {}'.format(i))
 
     tprint('Finish Resampling')
-    
-    ### List of sino and rand ###
+
+
+    #%% List of sino, rand and uMaps
+
     list_sino = [f for f in os.listdir(working_folder + '/sino/') if f.endswith(".hs")]
     list_rando = [f for f in os.listdir(working_folder + '/rando/') if f.endswith(".hs")]
     list_mu = [f for f in os.listdir(path_mu) if f.endswith(".nii")]
@@ -320,8 +353,10 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
         print('Reconstruction successful: Frame {}'.format(i))
 
     tprint('Finish AC Recon')
-    
-    ### resample the float images back to reference ###
+
+
+    #%% resample the float images back to reference
+
     # list of all ACs
     list_ACs = [f for f in os.listdir(path_AC) if f.endswith(".nii")]
 
@@ -339,6 +374,7 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
 
     # for loop, simultaneous matrices and images
     for num, image in zip(range(len(list_ACs)), sorted_alphanumeric(list_ACs)):
+
         print('TM: {}, Float-Image: {}'.format('tm_nac_' + str(num) + '.txt', image))
 
         flo = Eng_flo.ImageData(path_AC + image)
@@ -347,13 +383,13 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
         matrix = numpy.loadtxt(path_tm + 'tm_nac_' + str(num) + '.txt')
   
         # create affine transformation from numpy array
-        tm = Reg.AffineTransformation(matrix)
+        tm_fwd = Reg.AffineTransformation(matrix)
 
         # motion information from another source and resample an image with this informations
         print('Begin resampling: {}'.format(image))
         resampler_im.clear_transformations()
         resampler_im.set_floating_image(flo)
-        resampler_im.add_transformation(tm)
+        resampler_im.add_transformation(tm_fwd)
         new_im = resampler_im.forward(flo)
         new_im.write(path_moco + 'moco_' + str(num))
 
@@ -362,7 +398,8 @@ for list_file, norm_file in zip(sorted_alphanumeric(list_LM_files), sorted_alpha
     tprint('Finish Resampling')
 
 
-    ### define RTA method ##
+    #%% define RTA method
+
     # define initial image (first image, first frame)
     initial = Reg.NiftiImageData(working_folder + '/moco/moco_0.nii')
     initial_array = initial.as_array()

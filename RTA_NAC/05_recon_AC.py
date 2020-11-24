@@ -118,8 +118,8 @@ for i, sino, random, mu in zip(range(len(path_sino)), sorted_alphanumeric(list_s
     recon.process()
 
     # save recon images
-    recon_image = recon.get_output()
-    recon_image.write(path_AC + 'AC_' + str(i))
+    #recon_image = recon.get_output()
+    #recon_image.write(path_AC + 'AC_' + str(i))
 
     # save Image as .nii
     recon_image = Reg.NiftiImageData(recon.get_output())

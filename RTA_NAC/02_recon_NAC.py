@@ -41,13 +41,16 @@ print('Norm data: {}'.format(norm_file))
 #%% Create folders for results
 
 path_NAC = working_folder + '/recon/NAC/'
+path_smooth = working_folder + '/recon/SMOOTH/'
 path_sino = working_folder + '/sino/'
 path_rando = working_folder + '/rando/'
 
 if not os.path.exists(path_NAC):
     os.makedirs(path_NAC, mode=0o770)
     print('Create Folder: {}'.format(path_NAC))
-
+if not os.path.exists(path_smooth):
+    os.makedirs(path_smooth, mode=0o770)
+    print('Create Folder: {}'.format(path_smooth))
 
 #%% Settings for reconstruction
 
@@ -57,8 +60,8 @@ acq_model.set_num_tangential_LORs(5)
 
 # set recon, OSEM
 recon = Pet.OSMAPOSLReconstructor()
-num_subsets = 7
-num_subiterations = 4
+num_subsets = 21
+num_subiterations = 168
 recon.set_num_subsets(num_subsets)
 recon.set_num_subiterations(num_subiterations)
 
@@ -102,12 +105,22 @@ for i, sino, random in zip(range(len(path_sino)), sorted_alphanumeric(list_sino)
     recon.process()
 
     # save recon images
-    recon_image = recon.get_output()
-    recon_image.write(path_NAC + 'NAC_' + str(i))
-
-    # save Image as .nii
     recon_image = Reg.NiftiImageData(recon.get_output())
     recon_image.write(path_NAC + 'NAC_' + str(i))
+    
+    image = recon.get_output()
+    
+    # apply gaussian filter with 3mm fwhm
+    gaussian_filter = Pet.SeparableGaussianImageFilter()
+    gaussian_filter.set_fwhms((3, 3, 3))
+    #gaussian_filter.set_max_kernel_sizes((10, 10, 2))
+    gaussian_filter.set_normalise()
+    gaussian_filter.set_up(image)
+    gaussian_filter.apply(image)    
+
+    # save Image as .nii
+    smoothed_image = Reg.NiftiImageData(image)
+    smoothed_image.write(path_smooth + 'smooth_' + str(i))
 
     print('Reconstruction successful: Frame {}'.format(i))
 
